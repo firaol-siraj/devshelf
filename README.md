@@ -1,36 +1,208 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DevShelf
 
-## Getting Started
+A personal developer workspace for organizing reusable code snippets, notes, tags, and collections.
 
-First, run the development server:
+## Technology Stack
+
+- Next.js 16 — React framework
+- React 19 — UI
+- TypeScript — Static typing
+- PostgreSQL — Relational database
+- Prisma ORM 7 — Database access
+- Zod 4 — Input and environment validation
+- Tailwind CSS 4 — Styling
+- Vitest 3 — Automated testing
+- ESLint 9 — Code quality
+
+## Architecture
+
+DevShelf follows a layered application structure:
+
+- **App Router:** Pages, layouts, API routes, and Server Actions.
+- **Components:** Reusable interface components.
+- **Schemas:** Input validation contracts.
+- **Services:** Application business logic.
+- **Repositories:** Database access.
+- **Lib:** Shared infrastructure, errors, environment configuration, and utilities.
+- **Types:** Shared TypeScript definitions.
+
+### Project Structure
+
+```text
+src/
+├── app/
+│   ├── (auth)/
+│   ├── (marketing)/
+│   ├── (workspace)/
+│   └── api/
+├── components/
+│   ├── empty-states/
+│   ├── forms/
+│   ├── navigation/
+│   ├── previews/
+│   ├── skeletons/
+│   └── ui/
+├── lib/
+│   ├── env/
+│   ├── errors/
+│   └── validations/
+├── repositories/
+├── schemas/
+├── services/
+└── types/
+
+prisma/
+scripts/
+```
+
+## Prerequisites
+
+- Node.js compatible with the project dependencies
+- npm
+- PostgreSQL
+- Git
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone YOUR_REPOSITORY_URL
+cd devshelf
+npm install
+```
+
+Create your environment file:
+
+```bash
+cp .env.example .env
+```
+
+Configure your PostgreSQL connection strings in `.env`.
+
+Required variables:
+
+| Variable | Purpose |
+|---|---|
+| DATABASE_URL | Application database |
+| SHADOW_DATABASE_URL | Prisma migration shadow database |
+| NODE_ENV | Application environment |
+
+## Database Setup
+
+Create the development database and the separate shadow database in PostgreSQL.
+
+Validate the Prisma schema:
+
+```bash
+npx prisma validate
+```
+
+Apply migrations:
+
+```bash
+npx prisma migrate dev
+```
+
+Generate the Prisma client when required:
+
+```bash
+npx prisma generate
+```
+
+## Development
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quality Checks
 
-## Learn More
+Run automated tests:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm test
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Watch tests during development:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run test:watch
+```
 
-## Deploy on Vercel
+Generate coverage:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run test:coverage
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Type-check:
+
+```bash
+npm run typecheck
+```
+
+Lint:
+
+```bash
+npm run lint
+```
+
+Validate Prisma:
+
+```bash
+npx prisma validate
+```
+
+## Testing Strategy
+
+- Unit tests validate Zod schemas and independent application logic.
+- Tests should not depend on production data.
+- Database integration tests must use a dedicated test database.
+- Test fixtures should be deterministic.
+- External services should be mocked when appropriate.
+
+## Environment Security
+
+- Never commit `.env`.
+- Never commit database passwords or production secrets.
+- Commit `.env.example` with placeholder values.
+- Keep development, test, and production databases separate.
+
+## Current Implementation Status
+
+The current project includes:
+
+- Marketing pages.
+- Authentication interface.
+- Workspace dashboard.
+- Snippet validation Server Action.
+- Snippet creation and update validation schemas.
+- Initial service and repository layers.
+- Prisma database models.
+- API health endpoint.
+- Standardized application errors.
+- Environment validation.
+- Automated unit tests.
+
+**Note:** The current snippet validation Server Action demonstrates input validation only. It does not persist snippets to PostgreSQL.
+
+## Engineering Standards
+
+1. Validate external input using Zod.
+2. Keep database access inside repositories.
+3. Keep business logic inside services.
+4. Keep secrets outside version control.
+5. Run tests, type checking, and linting before committing.
+6. Use descriptive commit messages.
+7. Keep unit tests independent of external infrastructure.
+
+## License
+
+Add your chosen project license before public distribution.

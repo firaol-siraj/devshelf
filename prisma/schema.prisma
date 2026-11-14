@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SnippetStatus {
+  draft
+  published
+  archived
+}
+
+enum ProgrammingLanguage {
+  typescript
+  javascript
+  python
+  java
+  go
+  php
+  sql
+}
+
+model User {
+  id           String  @id @default(cuid())
+  name         String?
+  email        String  @unique
+  passwordHash String
+
+  snippets    Snippet[]
+  notes       Note[]
+  tags        Tag[]
+  collections Collection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Snippet {
+  id          String              @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  code        String              @db.Text
+  language    ProgrammingLanguage
+  status      SnippetStatus       @default(draft)
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags        SnippetTag[]
+  collections CollectionSnippet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+  @@index([userId, language])
+  @@index([userId, status])
+  @@map("snippets")
+}
+
+model Note {
+  id      String @id @default(cuid())
+  userId  String
+  title   String
+  content String @db.Text
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags        NoteTag[]
+  collections CollectionNote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+  @@map("notes")
+}
+
+model Tag {
+  id     String @id @default(cuid())
+  userId String
+  name   String
+
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snippets SnippetTag[]
+  notes    NoteTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model Collection {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snippets CollectionSnippet[]
+  notes    CollectionNote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("collections")
+}
+
+model SnippetTag {
+  snippetId String
+  tagId     String
+
+  snippet Snippet @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([snippetId, tagId])
+  @@index([tagId])
+  @@map("snippet_tags")
+}
+
+model NoteTag {
+  noteId String
+  tagId  String
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([tagId])
+  @@map("note_tags")
+}
+
+model CollectionSnippet {
+  collectionId String
+  snippetId    String
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  snippet    Snippet    @relation(fields: [snippetId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, snippetId])
+  @@index([snippetId])
+  @@map("collection_snippets")
+}
+
+model CollectionNote {
+  collectionId String
+  noteId       String
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  note       Note       @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, noteId])
+  @@index([noteId])
+  @@map("collection_notes")
+}
