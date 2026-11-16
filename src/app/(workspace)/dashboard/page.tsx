@@ -1,123 +1,268 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import Link from "next/link";
+import { Code2, FileCode, CheckCircle2, Clock, Plus } from "lucide-react";
+
+import { auth } from "@/auth";
+import { getUserSnippets } from "@/services/snippet.service";
+import { ValidationError } from "@/lib/errors/app-error";
 import SnippetPreview from "@/components/previews/SnippetPreview";
 import {
   NoSnippetsEmptyState,
   NoSearchResultsEmptyState,
-  NoLanguageMatchesEmptyState,
 } from "@/components/empty-states/EmptyState";
-import DashboardLoadingSkeleton from "@/components/skeletons/DashboardLoadingSkeleton";
-import SnippetValidationForm from "@/components/forms/SnippetValidationForm";
-import type { Snippet } from "@/types/snippet";
+import Card from "@/components/ui/Card";
+import type {
+  Snippet,
+  ProgrammingLanguage,
+  SnippetStatus,
+  SnippetSortOption,
+} from "@/types/snippet";
+import SnippetDiscoveryToolbar from "./snippet-discovery-toolbar";
 
-const sampleSnippets: Snippet[] = [
-  {
-    id: "snippet-1",
-    title: "TypeScript Generic Function",
-    description: "A reusable function that preserves the input type.",
-    language: "typescript",
-    code: `function identity<T>(value: T): T {
-  return value;
-}
+export const metadata: Metadata = {
+  title: "Dashboard | DevShelf",
+  description: "View and manage your saved code snippets.",
+};
 
-const result = identity("DevShelf");`,
-    status: "published",
-    createdAt: "2026-11-01T10:00:00.000Z",
-    updatedAt: "2026-11-10T08:00:00.000Z",
-  },
-  {
-    id: "snippet-2",
-    title: "Python List Comprehension",
-    description: "Create a list of squared numbers.",
-    language: "python",
-    code: `numbers = [1, 2, 3, 4, 5]
-squares = [number ** 2 for number in numbers]
-
-print(squares)`,
-    status: "draft",
-    createdAt: "2026-11-02T10:00:00.000Z",
-    updatedAt: "2026-11-09T12:00:00.000Z",
-  },
-];
-
-interface DashboardPageProps {
+export interface DashboardPageProps {
   searchParams?: Promise<{
-    q?: string;
-    language?: string;
+    q?: string | string[];
+    search?: string | string[];
+    status?: string | string[];
+    language?: string | string[];
+    sort?: string | string[];
   }>;
 }
 
-export default function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage(props?: DashboardPageProps) {
+  await connection();
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    redirect("/login");
+    return null;
+  }
+
+  const resolvedSearchParams = props?.searchParams
+    ? await props.searchParams
+    : {};
+
+  const rawQ =
+    typeof resolvedSearchParams.q === "string"
+      ? resolvedSearchParams.q
+      : typeof resolvedSearchParams.search === "string"
+      ? resolvedSearchParams.search
+      : undefined;
+
+  const rawStatus =
+    typeof resolvedSearchParams.status === "string"
+      ? resolvedSearchParams.status
+      : undefined;
+
+  const rawLanguage =
+    typeof resolvedSearchParams.language === "string"
+      ? resolvedSearchParams.language
+      : undefined;
+
+  const rawSort =
+    typeof resolvedSearchParams.sort === "string"
+      ? resolvedSearchParams.sort
+      : undefined;
+
+  const cleanQuery = rawQ?.trim();
+  const hasActiveFilters = Boolean(
+    cleanQuery ||
+      (rawStatus && rawStatus !== "all") ||
+      (rawLanguage && rawLanguage !== "all") ||
+      (rawSort && rawSort !== "newest"),
+  );
+
+  const hasExplicitQueryParams = Boolean(
+    rawQ !== undefined ||
+      rawStatus !== undefined ||
+      rawLanguage !== undefined ||
+      rawSort !== undefined,
+  );
+
+  let rawSnippets;
+  if (!hasExplicitQueryParams) {
+    // Preserve exact legacy call signature when no searchParams were provided
+    rawSnippets = await getUserSnippets(session.user.id);
+  } else {
+    try {
+      rawSnippets = await getUserSnippets(session.user.id, {
+        q: cleanQuery || undefined,
+        status: (rawStatus as SnippetStatus | "all") || undefined,
+        language: (rawLanguage as ProgrammingLanguage | "all") || undefined,
+        sort: (rawSort as SnippetSortOption) || "newest",
+      });
+    } catch (error: unknown) {
+      if (error instanceof ValidationError) {
+        // Fallback to default user snippets if query parameters are malformed
+        rawSnippets = await getUserSnippets(session.user.id);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  const snippets: Snippet[] = rawSnippets.map((s) => ({
+    id: s.id,
+    title: s.title,
+    description: s.description,
+    code: s.code,
+    language: s.language as ProgrammingLanguage,
+    status: s.status as SnippetStatus,
+    createdAt:
+      s.createdAt instanceof Date
+        ? s.createdAt.toISOString()
+        : String(s.createdAt),
+    updatedAt:
+      s.updatedAt instanceof Date
+        ? s.updatedAt.toISOString()
+        : String(s.updatedAt),
+  }));
+
+  const totalSnippets = snippets.length;
+  const publishedCount = snippets.filter(
+    (s) => s.status === "published",
+  ).length;
+  const draftCount = snippets.filter((s) => s.status === "draft").length;
+  const uniqueLanguagesCount = new Set(snippets.map((s) => s.language)).size;
+
+  const displayName = session.user.name ?? "Developer";
+
   return (
-    <section className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">
-          Your Snippets
-        </h2>
-        <p className="mt-1 text-sm text-foreground-secondary">
-          Your saved and reusable code snippets.
-        </p>
+    <div className="space-y-8">
+      {/* Welcome Banner & Action Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Welcome back, {displayName}
+          </h1>
+          <p className="mt-1 text-sm text-foreground-secondary">
+            Manage and organize your personal developer library.
+          </p>
+        </div>
+
+        {/* Create new snippet action button */}
+        <div className="shrink-0">
+          <Link
+            href="/dashboard/new"
+            aria-label="Create new snippet"
+            className="inline-flex items-center justify-center font-medium transition-colors select-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background h-8 px-3 text-xs gap-1.5 rounded-md shadow-subtle bg-primary text-white hover:bg-primary-hover active:bg-primary-hover/90"
+          >
+            <Plus size={16} aria-hidden="true" />
+            <span>New Snippet</span>
+          </Link>
+        </div>
       </div>
 
-	<SnippetValidationForm />
-      <Suspense fallback={<DashboardLoadingSkeleton showHeader={false} count={4} />}>
-        <SnippetContent searchParams={searchParams} />
+      {/* Metrics Section: Computed strictly from user's actual retrieved records */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-foreground-secondary">
+            <FileCode
+              size={16}
+              className="text-primary shrink-0"
+              aria-hidden="true"
+            />
+            <span className="text-xs font-medium">Total Snippets</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            {totalSnippets}
+          </p>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-foreground-secondary">
+            <CheckCircle2
+              size={16}
+              className="text-success shrink-0"
+              aria-hidden="true"
+            />
+            <span className="text-xs font-medium">Published</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            {publishedCount}
+          </p>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-foreground-secondary">
+            <Clock
+              size={16}
+              className="text-warning shrink-0"
+              aria-hidden="true"
+            />
+            <span className="text-xs font-medium">Drafts</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            {draftCount}
+          </p>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-foreground-secondary">
+            <Code2 size={16} className="text-info shrink-0" aria-hidden="true" />
+            <span className="text-xs font-medium">Languages</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+            {uniqueLanguagesCount}
+          </p>
+        </Card>
+      </div>
+
+      {/* Snippet Discovery Toolbar: Search, Filters, Sorting */}
+      <Suspense
+        fallback={
+          <div className="h-28 w-full animate-pulse rounded-xl border border-border bg-surface" />
+        }
+      >
+        <SnippetDiscoveryToolbar
+          initialSearch={cleanQuery}
+          initialStatus={rawStatus}
+          initialLanguage={rawLanguage}
+          initialSort={rawSort}
+          totalResults={totalSnippets}
+        />
       </Suspense>
-    </section>
-  );
-}
 
-async function SnippetContent({
-  searchParams,
-}: {
-  searchParams?: Promise<{
-    q?: string;
-    language?: string;
-  }>;
-}) {
-  const resolvedParams = searchParams ? await searchParams : {};
-  const query = resolvedParams.q?.trim().toLowerCase();
-  const language = resolvedParams.language?.trim().toLowerCase();
+      {/* Snippet Listing Section */}
+      <section aria-labelledby="recent-snippets-heading" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2
+              id="recent-snippets-heading"
+              className="text-lg font-semibold tracking-tight text-foreground"
+            >
+              {hasActiveFilters ? "Search Results" : "Recent Snippets"}
+            </h2>
+            <p className="text-xs text-foreground-muted">
+              {hasActiveFilters
+                ? `Showing ${totalSnippets} ${totalSnippets === 1 ? "result" : "results"}`
+                : `${totalSnippets} ${totalSnippets === 1 ? "snippet" : "snippets"}`}
+            </p>
+          </div>
+        </div>
 
-  // 1. First-time onboarding: collection has zero snippets
-  if (sampleSnippets.length === 0) {
-    return <NoSnippetsEmptyState />;
-  }
-
-  // 2. Filter sample snippets by query and language
-  let filtered = sampleSnippets;
-
-  if (query) {
-    filtered = filtered.filter(
-      (s) =>
-        s.title.toLowerCase().includes(query) ||
-	(s.description ?? "").toLowerCase().includes(query) ||
-        s.code.toLowerCase().includes(query)
-    );
-  }
-
-  if (language) {
-    filtered = filtered.filter(
-      (s) => s.language.toLowerCase() === language
-    );
-  }
-
-  // 3. Filtered results empty states
-  if (filtered.length === 0) {
-    if (query) {
-      return <NoSearchResultsEmptyState query={resolvedParams.q} />;
-    }
-    if (language) {
-      return <NoLanguageMatchesEmptyState language={resolvedParams.language} />;
-    }
-    return <NoSearchResultsEmptyState />;
-  }
-
-  // 4. Populated snippet grid
-  return (
-    <div className="grid gap-5 md:grid-cols-2">
-      {filtered.map((snippet) => (
-        <SnippetPreview key={snippet.id} snippet={snippet} />
-      ))}
+        {totalSnippets === 0 ? (
+          hasActiveFilters ? (
+            <NoSearchResultsEmptyState query={cleanQuery} />
+          ) : (
+            <NoSnippetsEmptyState />
+          )
+        ) : (
+          <div className="grid gap-5 md:grid-cols-2">
+            {snippets.map((snippet) => (
+              <SnippetPreview key={snippet.id} snippet={snippet} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

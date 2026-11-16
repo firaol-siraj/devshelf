@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, Ref } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -7,6 +7,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
@@ -36,6 +37,7 @@ export default function Button({
   disabled,
   className,
   type = "button",
+  ref,
   ...props
 }: ButtonProps) {
   const baseStyles =
@@ -43,6 +45,7 @@ export default function Button({
 
   return (
     <button
+      ref={ref}
       type={type}
       disabled={disabled || isLoading}
       aria-busy={isLoading ? true : undefined}

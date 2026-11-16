@@ -8,12 +8,18 @@ export interface WorkspaceShellProps {
   children: ReactNode;
   title?: string;
   description?: string;
+  user?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
 }
 
 export default function WorkspaceShell({
   children,
   title = "Dashboard",
   description = "Manage and organize your reusable code snippets.",
+  user,
 }: WorkspaceShellProps) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
@@ -31,6 +37,7 @@ export default function WorkspaceShell({
       <Sidebar
         isOpen={isMobileNavOpen}
         onClose={handleCloseMobileNav}
+        user={user}
       />
 
       {/* Main Workspace Column: md:pl-64 reserves 256px for the desktop sidebar */}

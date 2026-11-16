@@ -129,11 +129,13 @@ export default function EmptyState({
  */
 export interface NoSnippetsEmptyStateProps {
   onCreateSnippet?: () => void;
+  createHref?: string;
   className?: string;
 }
 
 export function NoSnippetsEmptyState({
   onCreateSnippet,
+  createHref = "/dashboard/new",
   className,
 }: NoSnippetsEmptyStateProps) {
   return (
@@ -144,11 +146,9 @@ export function NoSnippetsEmptyState({
       primaryAction={{
         label: "Create your first snippet",
         icon: Plus,
+        href: onCreateSnippet ? undefined : createHref,
         onClick: onCreateSnippet,
-        disabled: !onCreateSnippet,
-        ariaLabel: onCreateSnippet
-          ? "Create your first snippet"
-          : "Create your first snippet (coming soon)",
+        ariaLabel: "Create your first snippet",
       }}
       className={className}
     />

@@ -8,13 +8,21 @@ import {
   House,
   Code2,
   X,
+  LogOut,
 } from "lucide-react";
 
+import Button from "@/components/ui/Button";
+import { logoutAction } from "@/app/(auth)/login/actions";
 import type { NavigationItem } from "@/types/navigation";
 
 export interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
+  user?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+  };
 }
 
 const navigationItems: NavigationItem[] = [
@@ -49,6 +57,7 @@ function getServerDesktopSnapshot(): boolean {
 export default function Sidebar({
   isOpen = false,
   onClose,
+  user,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -266,16 +275,49 @@ export default function Sidebar({
           </nav>
         </div>
 
-        {/* Footer Version Indicator */}
-        <div className="border-t border-border pt-3 px-2 flex items-center justify-between text-xs text-foreground-muted select-none">
-          <span className="inline-flex items-center gap-1.5 font-mono text-[11px]">
-            <span
-              className="h-1.5 w-1.5 rounded-full bg-success"
-              aria-hidden="true"
-            />
-            DevShelf
-          </span>
-          <span className="font-mono text-[11px]">v0.1.0</span>
+        <div className="flex flex-col gap-3">
+          {/* User profile & Sign Out if authenticated */}
+          {user && (
+            <div className="border-t border-border pt-3 px-2 flex flex-col gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-semibold shrink-0 select-none">
+                  {user.name?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? "U"}
+                </div>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-medium text-foreground truncate">
+                    {user.name || "User"}
+                  </span>
+                  <span className="text-[11px] text-foreground-muted truncate">
+                    {user.email}
+                  </span>
+                </div>
+              </div>
+
+              <form action={logoutAction}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs text-foreground-secondary hover:text-danger hover:bg-danger/10"
+                >
+                  <LogOut size={14} className="mr-2" aria-hidden="true" />
+                  Sign Out
+                </Button>
+              </form>
+            </div>
+          )}
+
+          {/* Footer Version Indicator */}
+          <div className="border-t border-border pt-3 px-2 flex items-center justify-between text-xs text-foreground-muted select-none">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[11px]">
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-success"
+                aria-hidden="true"
+              />
+              DevShelf
+            </span>
+            <span className="font-mono text-[11px]">v0.1.0</span>
+          </div>
         </div>
       </aside>
     </>

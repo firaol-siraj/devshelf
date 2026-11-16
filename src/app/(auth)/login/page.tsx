@@ -1,32 +1,32 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import LoginForm from "./login-form";
+
+export const metadata: Metadata = {
+  title: "Sign In | DevShelf",
+  description: "Sign in to your DevShelf developer workspace.",
+};
+
 export default function LoginPage() {
   return (
     <div className="w-full max-w-md rounded-xl border border-border bg-surface p-8 text-foreground shadow-card">
-      <h1 className="text-2xl font-bold">Welcome Back</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Welcome Back</h1>
 
-      <p className="mt-2 text-foreground-secondary">
+      <p className="mt-2 text-sm text-foreground-secondary">
         Sign in to your DevShelf account.
       </p>
 
-      <form className="mt-6 space-y-4">
-        <input
-          type="email"
-          placeholder="Email address"
-          className="w-full rounded-lg border border-border bg-background p-3 text-foreground placeholder:text-foreground-muted"
-        />
+      <LoginForm />
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full rounded-lg border border-border bg-background p-3 text-foreground placeholder:text-foreground-muted"
-        />
-
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-primary p-3 text-white hover:bg-primary-hover"
+      <p className="mt-6 text-center text-xs text-foreground-secondary">
+        Don&apos;t have an account?{" "}
+        <Link
+          href="/register"
+          className="font-medium text-primary hover:underline hover:text-primary-hover"
         >
-          Sign In
-        </button>
-      </form>
+          Create one now
+        </Link>
+      </p>
     </div>
   );
 }

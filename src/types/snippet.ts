@@ -12,6 +12,16 @@ export type SnippetStatus =
   | "published"
   | "archived";
 
+export type SnippetSortOption =
+  | "newest"
+  | "oldest"
+  | "updated"
+  | "recently_updated"
+  | "a-z"
+  | "z-a"
+  | "title_asc"
+  | "title_desc";
+
 export interface Snippet {
   id: string;
   title: string;

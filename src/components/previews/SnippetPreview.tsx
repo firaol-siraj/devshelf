@@ -1,11 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Copy, Check, AlertCircle, Code2, Terminal, Clock } from "lucide-react";
+import { useState, useRef, useEffect, useActionState } from "react";
+import Link from "next/link";
+import {
+  Copy,
+  Check,
+  AlertCircle,
+  Code2,
+  Terminal,
+  Clock,
+  Pencil,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
 
 import Card from "@/components/ui/Card";
 import Badge, { type BadgeVariant } from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import { deleteSnippetAction } from "@/app/(workspace)/dashboard/actions";
+import { initialDeleteSnippetFormState } from "@/app/(workspace)/dashboard/types";
 import type { Snippet, SnippetStatus, ProgrammingLanguage } from "@/types/snippet";
 
 export interface SnippetPreviewProps {
@@ -58,7 +71,16 @@ export default function SnippetPreview({
 }: SnippetPreviewProps) {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [deleteState, deleteFormAction, isDeleting] = useActionState(
+    deleteSnippetAction,
+    initialDeleteSnippetFormState,
+  );
+
+  const showDeleteDialog = isDeleteDialogOpen && !deleteState.success;
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const cancelDeleteButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Clean up any pending timer on unmount
   useEffect(() => {
@@ -68,6 +90,27 @@ export default function SnippetPreview({
       }
     };
   }, []);
+
+  // Autofocus cancel button when dialog opens for accessibility
+  useEffect(() => {
+    if (showDeleteDialog && cancelDeleteButtonRef.current) {
+      cancelDeleteButtonRef.current.focus();
+    }
+  }, [showDeleteDialog]);
+
+  // Handle escape key to cancel deletion
+  useEffect(() => {
+    if (!showDeleteDialog) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isDeleting) {
+        setIsDeleteDialogOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showDeleteDialog, isDeleting]);
 
   const handleCopy = async () => {
     // Prevent repeated clicks while copying
@@ -111,21 +154,47 @@ export default function SnippetPreview({
 
   return (
     <Card className={["flex flex-col gap-4 min-w-0 overflow-hidden", className].filter(Boolean).join(" ")}>
-      {/* Header: Title and Status Badge */}
+      {/* Header: Title, Status Badge, and Edit Action */}
       <div className="flex items-start justify-between gap-3 min-w-0">
         <h3
           title={snippet.title}
           className="text-base font-semibold tracking-tight text-foreground truncate min-w-0 flex-1"
         >
-          {snippet.title}
+          <Link
+            href={`/dashboard/${snippet.id}`}
+            className="hover:text-primary transition-colors focus-visible:outline-none focus-visible:underline"
+          >
+            {snippet.title}
+          </Link>
         </h3>
 
-        <Badge
-          variant={statusVariants[snippet.status] ?? "default"}
-          className="shrink-0 capitalize"
-        >
-          {snippet.status}
-        </Badge>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Badge
+            variant={statusVariants[snippet.status] ?? "default"}
+            className="capitalize"
+          >
+            {snippet.status}
+          </Badge>
+
+          <Link
+            href={`/dashboard/${snippet.id}/edit`}
+            className="inline-flex h-6 items-center gap-1 rounded border border-border/60 bg-surface px-2 text-[11px] font-medium text-foreground-secondary hover:bg-surface-secondary hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={`Edit ${snippet.title}`}
+          >
+            <Pencil size={11} aria-hidden="true" />
+            <span>Edit</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="inline-flex h-6 items-center gap-1 rounded border border-danger/30 bg-surface px-2 text-[11px] font-medium text-danger hover:bg-danger/10 hover:border-danger/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger cursor-pointer"
+            aria-label={`Delete ${snippet.title}`}
+          >
+            <Trash2 size={11} aria-hidden="true" />
+            <span>Delete</span>
+          </button>
+        </div>
       </div>
 
       {/* Description */}
@@ -246,6 +315,89 @@ export default function SnippetPreview({
           <span>Updated {dateInfo.formatted}</span>
         </time>
       </div>
+
+      {/* Accessible Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div
+          role="presentation"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isDeleting) {
+              setIsDeleteDialogOpen(false);
+            }
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={`delete-dialog-title-${snippet.id}`}
+            aria-describedby={`delete-dialog-desc-${snippet.id}`}
+            className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-xl space-y-4"
+          >
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+                <AlertTriangle size={20} aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <h3
+                  id={`delete-dialog-title-${snippet.id}`}
+                  className="text-base font-semibold text-foreground"
+                >
+                  Delete Snippet
+                </h3>
+                <p
+                  id={`delete-dialog-desc-${snippet.id}`}
+                  className="text-xs text-foreground-secondary leading-relaxed"
+                >
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold text-foreground">
+                    &ldquo;{snippet.title}&rdquo;
+                  </span>
+                  ? This action cannot be undone and will permanently remove this
+                  snippet from your library.
+                </p>
+              </div>
+            </div>
+
+            {/* Error banner if deletion failed */}
+            {deleteState.errors?.form && deleteState.errors.form.length > 0 && (
+              <div
+                role="alert"
+                className="flex items-center gap-2 rounded-md border border-danger/20 bg-danger/10 p-2.5 text-xs text-danger"
+              >
+                <AlertCircle size={14} className="shrink-0" aria-hidden="true" />
+                <span>{deleteState.errors.form[0]}</span>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <form action={deleteFormAction} className="flex items-center justify-end gap-2.5 pt-2">
+              <input type="hidden" name="id" value={snippet.id} />
+
+              <Button
+                ref={cancelDeleteButtonRef}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsDeleteDialogOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                variant="danger"
+                size="sm"
+                isLoading={isDeleting}
+                disabled={isDeleting}
+              >
+                Delete Snippet
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
